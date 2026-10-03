@@ -1,0 +1,62 @@
+name: failure-lab
+services:
+  db:
+    image: postgres:17.4-alpine
+    environment:
+      POSTGRES_PASSWORD: demo
+      POSTGRES_DB: failure
+    volumes: [database:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres -d failure"]
+      interval: 3s
+      retries: 20
+  rabbit:
+    image: rabbitmq:4.0.7-alpine
+    volumes: [broker:/var/lib/rabbitmq]
+    healthcheck:
+      test: [CMD, rabbitmq-diagnostics, -q, ping]
+      interval: 5s
+      retries: 30
+  api:
+    build: { context: ., target: api }
+    environment: &env
+      DATABASE_URL: postgres://postgres:demo@db:5432/failure
+      AMQP_URL: amqp://guest:guest@rabbit:5672
+    volumes: [pdfs:/data]
+    depends_on:
+      db: { condition: service_healthy }
+      rabbit: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 3s
+      retries: 20
+  worker:
+    build: ./worker
+    environment: *env
+    volumes: [pdfs:/data]
+    restart: on-failure
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: [CMD, python, -c, "import os; os.kill(1,0)"]
+      interval: 5s
+      retries: 20
+  web:
+    build: { context: ., target: web }
+    ports: ["127.0.0.1:8081:80"]
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1/]
+      interval: 5s
+      retries: 20
+volumes:
+  broker:
+  database:
+  pdfs:
