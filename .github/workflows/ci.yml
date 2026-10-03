@@ -27,6 +27,8 @@ jobs:
       - run: python tests/pdf_test.py
       - run: docker compose up --build -d --wait --wait-timeout 180
       - run: python3 tests/integration.py
+      - run: python3 tests/broker_restart.py
+      - run: python3 tests/broker_restart.py --recreate
       - if: always()
         run: docker compose logs && docker compose down -v
       - uses: actions/upload-pages-artifact@v3

@@ -57,3 +57,9 @@ GitHub Actions runs these checks and the full Compose integration suite before d
 ## Tradeoffs
 
 A single dispatcher and worker keep the experiment readable. This v1 demonstrates fault recovery, not production scale. Transport is at least once; application outcomes are idempotent. Injected renderer failures retry promptly rather than using production exponential backoff. Persistent PDF volumes require lifecycle management in a long-lived system; reset removes database rows, not historic PDF files. A real deployment would add authorization, TLS, secrets management, retention and alerting.
+
+### Broker restart recovery
+
+RabbitMQ keeps its durable queues in the named `broker` volume with a stable hostname, so replacement containers reopen the same broker data. The API treats an unexpected AMQP connection or channel error/close as fatal and exits with a nonzero status. Compose's `restart: on-failure` creates a fresh connection and consumer; startup attempts may repeat while RabbitMQ recovers. Pending PostgreSQL outbox rows are republished, and confirmed persistent messages survive in the broker volume. Stage checkpoints tolerate redelivery. Intentional SIGTERM/SIGINT shutdown sets a separate graceful-shutdown flag so normal connection closure does not trigger failure handling.
+
+`/api/health` checks both PostgreSQL and an AMQP queue RPC, with a two-second deadline; a closed or unresponsive broker cannot be reported as ready. Run `python3 tests/broker_restart.py` after the integration suite to stop the renderer, enqueue confirmed work, restart RabbitMQ, verify the API restarts, and check that queued and newly submitted invoices each deliver once. This test resets demo state and temporarily stops/restarts local containers. Add `--recreate` to replace the broker container and verify persistence across recreation as well. CI runs both variants before Pages deployment.

@@ -75,3 +75,15 @@ except urllib.error.HTTPError as e:
 else:
     raise AssertionError("Unknown fault accepted")
 print("PASS: invalid inputs rejected")
+
+for endpoint in ["/batches", "/fault"]:
+    req = urllib.request.Request(
+        BASE + endpoint, data=b"null", headers={"Content-Type": "application/json"}
+    )
+    try:
+        urllib.request.urlopen(req, timeout=10)
+    except urllib.error.HTTPError as error:
+        assert error.code == 400
+    else:
+        raise AssertionError(f"{endpoint} accepted null body")
+print("PASS: null request bodies rejected with 400")

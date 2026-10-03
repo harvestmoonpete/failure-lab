@@ -12,12 +12,14 @@ services:
       retries: 20
   rabbit:
     image: rabbitmq:4.0.7-alpine
+    hostname: rabbit
     volumes: [broker:/var/lib/rabbitmq]
     healthcheck:
       test: [CMD, rabbitmq-diagnostics, -q, ping]
       interval: 5s
       retries: 30
   api:
+    restart: on-failure
     build: { context: ., target: api }
     environment: &env
       DATABASE_URL: postgres://postgres:demo@db:5432/failure

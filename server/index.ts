@@ -3,9 +3,26 @@ import pg from "pg";
 import amqp from "amqplib";
 import { readFile } from "node:fs/promises";
 import { type Fault } from "../src/model.js";
+const app = Fastify({ logger: true });
+let shuttingDown = false;
+let brokerReady = false;
+function brokerFailed(error: unknown) {
+  brokerReady = false;
+  if (shuttingDown) return;
+  app.log.error(
+    { error },
+    "Broker connection lost; exiting so Compose reconnects",
+  );
+  // Unconfirmed outbox rows remain pending; unacknowledged messages redeliver.
+  process.exit(1);
+}
 const db = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const mq = await amqp.connect(process.env.AMQP_URL ?? "amqp://localhost");
+mq.on("error", brokerFailed);
+mq.on("close", () => brokerFailed("AMQP connection closed"));
 const channel = await mq.createConfirmChannel();
+channel.on("error", brokerFailed);
+channel.on("close", () => brokerFailed("AMQP channel closed"));
 await channel.assertQueue("render", { durable: true });
 await channel.assertQueue("dead", { durable: true });
 await channel.assertQueue("completed", { durable: true });
@@ -13,10 +30,9 @@ await channel.prefetch(1);
 await db.query(
   `CREATE TABLE IF NOT EXISTS jobs(id text PRIMARY KEY,customer text NOT NULL,amount integer NOT NULL,stage text NOT NULL DEFAULT 'validated',attempts integer NOT NULL DEFAULT 0,fault text NOT NULL,created_at timestamptz DEFAULT now());CREATE TABLE IF NOT EXISTS events(id serial PRIMARY KEY,job_id text,message text,created_at timestamptz DEFAULT now());CREATE TABLE IF NOT EXISTS batches(key text PRIMARY KEY);CREATE TABLE IF NOT EXISTS outbox(id serial PRIMARY KEY,queue text NOT NULL,payload jsonb NOT NULL,sent boolean DEFAULT false);CREATE TABLE IF NOT EXISTS settings(id integer PRIMARY KEY,fault text NOT NULL);INSERT INTO settings VALUES(1,'none') ON CONFLICT DO NOTHING;`,
 );
-const app = Fastify({ logger: true });
 let dispatching = false;
 const timer = setInterval(async () => {
-  if (dispatching) return;
+  if (dispatching || !brokerReady || shuttingDown) return;
   dispatching = true;
   try {
     const rows = await db.query(
@@ -35,7 +51,7 @@ const timer = setInterval(async () => {
     dispatching = false;
   }
 }, 300);
-channel.consume("completed", async (msg) => {
+await channel.consume("completed", async (msg) => {
   if (!msg) return;
   try {
     const body = JSON.parse(msg.content.toString());
@@ -64,9 +80,29 @@ channel.consume("completed", async (msg) => {
     channel.nack(msg, false, true);
   }
 });
-app.get("/api/health", async () => {
-  await db.query("SELECT 1");
-  return { ok: true };
+brokerReady = true;
+app.get("/api/health", async (_req, reply) => {
+  if (!brokerReady || shuttingDown)
+    return reply.code(503).send({ ok: false, message: "Broker unavailable" });
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      Promise.all([db.query("SELECT 1"), channel.checkQueue("completed")]),
+      new Promise((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error("Dependency health timed out")),
+          2000,
+        );
+      }),
+    ]);
+    return { ok: true };
+  } catch {
+    return reply
+      .code(503)
+      .send({ ok: false, message: "Dependency unavailable" });
+  } finally {
+    clearTimeout(timeout);
+  }
 });
 app.get("/api/snapshot", async () => ({
   jobs: (await db.query("SELECT * FROM jobs ORDER BY created_at,id")).rows,
@@ -78,7 +114,7 @@ app.get("/api/snapshot", async () => ({
 app.post<{ Body: { count: number; key: string } }>(
   "/api/batches",
   async (req, reply) => {
-    const { count, key } = req.body;
+    const { count, key } = req.body ?? {};
     if (
       !Number.isInteger(count) ||
       count < 1 ||
@@ -87,12 +123,10 @@ app.post<{ Body: { count: number; key: string } }>(
       key.length < 1 ||
       key.length > 100
     )
-      return reply
-        .code(400)
-        .send({
-          message:
-            "Provide count 1–20 and an idempotency key of 1–100 characters",
-        });
+      return reply.code(400).send({
+        message:
+          "Provide count 1–20 and an idempotency key of 1–100 characters",
+      });
     const c = await db.connect();
     try {
       await c.query("BEGIN");
@@ -140,7 +174,7 @@ app.post<{ Body: { count: number; key: string } }>(
   },
 );
 app.post<{ Body: { fault: Fault } }>("/api/fault", async (req, reply) => {
-  if (!["none", "duplicate", "outage", "crash"].includes(req.body.fault))
+  if (!["none", "duplicate", "outage", "crash"].includes(req.body?.fault))
     return reply.code(400).send({ message: "Unknown fault" });
   await db.query("UPDATE settings SET fault=$1 WHERE id=1", [req.body.fault]);
   return { ok: true };
@@ -203,11 +237,9 @@ app.post("/api/reset", async (_req, reply) => {
     const pending = await c.query("SELECT id FROM outbox WHERE sent=false");
     if (r.rowCount || pending.rowCount) {
       await c.query("ROLLBACK");
-      return reply
-        .code(409)
-        .send({
-          message: "Wait for active invoices to settle before resetting",
-        });
+      return reply.code(409).send({
+        message: "Wait for active invoices to settle before resetting",
+      });
     }
     await c.query("TRUNCATE jobs,events,batches,outbox RESTART IDENTITY");
     await c.query("UPDATE settings SET fault='none'");
@@ -222,8 +254,25 @@ app.post("/api/reset", async (_req, reply) => {
   }
 });
 app.addHook("onClose", async () => {
+  shuttingDown = true;
+  brokerReady = false;
   clearInterval(timer);
-  await mq.close();
-  await db.end();
+  try {
+    await mq.close();
+  } finally {
+    await db.end();
+  }
 });
+for (const signal of ["SIGTERM", "SIGINT"] as const) {
+  process.once(signal, () => {
+    shuttingDown = true;
+    brokerReady = false;
+    const forceExit = setTimeout(() => process.exit(0), 5000);
+    forceExit.unref();
+    void app.close().then(
+      () => process.exit(0),
+      () => process.exit(1),
+    );
+  });
+}
 await app.listen({ host: "0.0.0.0", port: 3000 });
