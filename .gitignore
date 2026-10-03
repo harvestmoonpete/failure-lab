@@ -3,3 +3,6 @@ dist/
 .env
 __pycache__/
 .venv/
+
+/test-results/
+/playwright-report/

@@ -123,11 +123,11 @@ header {
   align-items: center;
   font-size: 9px;
   letter-spacing: 1.3px;
-  color: #6e7a8e;
+  color: #526477;
 }
 header b {
   margin: 0 14px;
-  color: #b0b9c6;
+  color: #526477;
 }
 .mode {
   letter-spacing: 0;
@@ -152,7 +152,7 @@ h1 {
 }
 .heading p:not(.eyebrow) {
   font-size: 13px;
-  color: #6c7a8d;
+  color: #526477;
   margin: 0;
 }
 .secondary {
@@ -170,7 +170,7 @@ h1 {
   border: 1px solid #dbe6ce;
   border-radius: 7px;
   font-size: 11px;
-  color: #65744f;
+  color: #526477;
 }
 .notice strong {
   color: #435a2d;
@@ -190,7 +190,7 @@ h1 {
 }
 .metric > span {
   font-size: 11px;
-  color: #6d7c8e;
+  color: #526477;
 }
 .metric strong {
   display: block;
@@ -201,7 +201,7 @@ h1 {
 }
 .metric small {
   font-size: 10px;
-  color: #96a0af;
+  color: #526477;
 }
 .panel {
   background: #fff;
@@ -222,13 +222,13 @@ h1 {
 }
 .panel-heading p {
   font-size: 11px;
-  color: #8792a2;
+  color: #526477;
   margin: 7px 0 0;
 }
 .step {
   font-size: 9px;
   letter-spacing: 1px;
-  color: #9aa5b3;
+  color: #526477;
 }
 .faults {
   display: grid;
@@ -261,7 +261,7 @@ h1 {
   display: block;
   font-size: 10px;
   line-height: 1.5;
-  color: #85909f;
+  color: #526477;
   margin-top: 7px;
 }
 .batch {
@@ -281,7 +281,7 @@ h1 {
   border-radius: 5px;
 }
 .batch > span {
-  color: #99a3b1;
+  color: #526477;
   font-size: 10px;
 }
 .primary {
@@ -308,7 +308,7 @@ h1 {
   font-size: 10px;
   margin-left: 7px;
   padding: 3px 6px;
-  color: #7b889a;
+  color: #526477;
 }
 table {
   width: 100%;
@@ -319,7 +319,7 @@ table {
 th {
   font-weight: 500;
   font-size: 9px;
-  color: #98a3b0;
+  color: #526477;
   border-bottom: 1px solid #e9edf2;
   padding: 9px 4px 13px;
 }
@@ -334,7 +334,7 @@ td strong {
 td small {
   display: block;
   font-size: 9px;
-  color: #929ead;
+  color: #526477;
   margin-top: 5px;
 }
 .badge {
@@ -342,30 +342,30 @@ td small {
   border-radius: 4px;
   font-size: 9px;
   background: #eef1f7;
-  color: #68758b;
+  color: #526477;
 }
 .badge.delivered {
   background: #edf7e5;
-  color: #688541;
+  color: #47622c;
 }
 .badge.dead {
   background: #fcebe7;
-  color: #b9644e;
+  color: #98432e;
 }
 .badge.rendered {
   background: #e8f1ff;
-  color: #6183ac;
+  color: #3b5f89;
 }
 .link {
   background: none;
   border: 0;
   font-size: 10px;
-  color: #56733b;
+  color: #526477;
   padding: 0;
   font-weight: 700;
 }
 .muted {
-  color: #929eac;
+  color: #526477;
   font-size: 11px;
 }
 .empty {
@@ -374,7 +374,7 @@ td small {
 }
 .empty > span {
   font-size: 34px;
-  color: #aab5c4;
+  color: #526477;
 }
 .empty h3 {
   font-size: 13px;
@@ -383,11 +383,11 @@ td small {
 .empty p {
   font-size: 11px;
   line-height: 1.8;
-  color: #96a0af;
+  color: #526477;
 }
 .live {
   font-size: 9px;
-  color: #8c9a88;
+  color: #526477;
 }
 .event-list {
   height: 322px;
@@ -413,12 +413,12 @@ td small {
 .event p {
   font-size: 10px;
   line-height: 1.5;
-  color: #738297;
+  color: #526477;
   margin: 5px 0;
 }
 .event time {
   font-size: 8px;
-  color: #a0aab7;
+  color: #526477;
 }
 footer {
   display: flex;
@@ -427,11 +427,11 @@ footer {
   padding: 28px 0;
   font-size: 9px;
   letter-spacing: 1px;
-  color: #8d9aab;
+  color: #526477;
 }
 footer span {
   letter-spacing: 0;
-  color: #a0aab7;
+  color: #526477;
 }
 footer a {
   margin-left: auto;
@@ -439,7 +439,7 @@ footer a {
 .architecture {
   margin-top: 24px;
   line-height: 1.9;
-  color: #6e7d91;
+  color: #526477;
 }
 .architecture h2 {
   color: #253349;
@@ -576,3 +576,6 @@ footer a {
     height: 27px;
   }
 }
+
+/* Eyebrows appear on both light content and the dark sidebar. */
+main .eyebrow { color: #526477; }
