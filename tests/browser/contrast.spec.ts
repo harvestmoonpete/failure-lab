@@ -14,8 +14,13 @@ test('contrast remains readable through failure and recovery', async ({ page }) 
   await page.getByRole('button', { name: /Renderer outage/ }).click();
   await page.getByRole('button', { name: /Process batch/ }).click();
   await expect(page.getByRole('button', { name: /Replay/ })).toBeVisible({ timeout: 20000 });
+  await page.getByRole('combobox', { name: 'Show invoices' }).selectOption('dead');
+  await expect(page.locator('tbody tr')).toHaveCount(1);
+  await expect(page.getByRole('status')).toHaveText('1 of 4 invoices');
   await checkContrast(page);
   await page.getByRole('button', { name: /Replay/ }).click();
+  await expect(page.locator('tbody tr')).toHaveCount(0);
+  await page.getByRole('combobox', { name: 'Show invoices' }).selectOption('all');
   await expect(page.locator('.badge.delivered')).toHaveCount(4, { timeout: 20000 });
   await checkContrast(page);
 });

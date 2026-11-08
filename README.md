@@ -67,3 +67,7 @@ RabbitMQ keeps its durable queues in the named `broker` volume with a stable hos
 ### Browser contrast regression checks
 
 Run `npx playwright install chromium` once, then `npm run test:browser`. CI checks rendered text contrast on desktop and mobile, including populated workflow states, using axe. Tests serve the built app under its repository subpath. These focused checks do not establish full accessibility conformance.
+
+## Small improvement · November 7, 2026
+
+Filter the invoice table by in-flight, delivered, or needs-replay status. Counts update as jobs progress; the global metrics and event stream remain unfiltered.

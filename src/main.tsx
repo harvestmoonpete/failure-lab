@@ -39,7 +39,8 @@ function App() {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [count, setCount] = useState(4),
-    [tab, setTab] = useState("pipeline");
+    [tab, setTab] = useState("pipeline"),
+    [jobFilter, setJobFilter] = useState("all");
   const refresh = async () => setS(await adapter.snapshot());
   useEffect(() => {
     refresh().catch((e) => setError(e.message));
@@ -62,6 +63,13 @@ function App() {
     }
   }
   const completed = s.jobs.filter((j) => j.stage === "delivered").length;
+  const visibleJobs = s.jobs.filter(
+    (j) =>
+      jobFilter === "all" ||
+      (jobFilter === "active"
+        ? !["dead", "delivered"].includes(j.stage)
+        : j.stage === jobFilter),
+  );
   return (
     <div className="shell">
       <aside>
@@ -241,6 +249,21 @@ function App() {
                   </h2>
                   <span className="step">02 / OBSERVE</span>
                 </div>
+                <label className="job-filter">
+                  Show invoices
+                  <select
+                    value={jobFilter}
+                    onChange={(e) => setJobFilter(e.target.value)}
+                  >
+                    <option value="all">All invoices</option>
+                    <option value="active">In flight</option>
+                    <option value="dead">Needs replay</option>
+                    <option value="delivered">Delivered</option>
+                  </select>
+                  <span role="status">
+                    {visibleJobs.length} of {s.jobs.length} invoices
+                  </span>
+                </label>
                 <div className="table-wrap">
                   <table>
                     <thead>
@@ -252,7 +275,7 @@ function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {s.jobs.map((j) => (
+                      {visibleJobs.map((j) => (
                         <tr key={j.id}>
                           <td>
                             <strong>{j.id}</strong>
@@ -295,6 +318,12 @@ function App() {
                       ))}
                     </tbody>
                   </table>
+                  {s.jobs.length > 0 && visibleJobs.length === 0 && (
+                    <p className="empty">
+                      No invoices match this filter. Choose All invoices to see
+                      the pipeline.
+                    </p>
+                  )}
                   {s.jobs.length === 0 && (
                     <div className="empty">
                       <span>◇</span>

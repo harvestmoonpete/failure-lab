@@ -578,4 +578,24 @@ footer a {
 }
 
 /* Eyebrows appear on both light content and the dark sidebar. */
-main .eyebrow { color: #526477; }
+main .eyebrow {
+  color: #526477;
+}
+
+.job-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+}
+.job-filter select {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 8px;
+  font: inherit;
+  background: #fff;
+  color: #182736;
+  border: 1px solid #627180;
+  border-radius: 6px;
+}
