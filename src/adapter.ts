@@ -9,6 +9,12 @@ export class Simulation implements Adapter {
   private state: Snapshot = { jobs: [], events: [], fault: "none" };
   private keys = new Set<string>();
   private tick = 0;
+  private nextAdvance = 0;
+  constructor(
+    private intervalMs = 0,
+    private now: () => number = Date.now,
+  ) {}
+
   private event(id: string, message: string) {
     this.state.events.unshift({
       id: this.state.events.length + 1,
@@ -20,6 +26,8 @@ export class Simulation implements Adapter {
     });
   }
   async snapshot() {
+    if (this.now() < this.nextAdvance) return structuredClone(this.state);
+    this.nextAdvance = this.now() + this.intervalMs;
     for (const j of this.state.jobs) {
       if (j.stage === "dead" || j.stage === "delivered") continue;
       if (j.stage === "validated" && j.fault === "outage") {
@@ -50,6 +58,11 @@ export class Simulation implements Adapter {
   async submit(count: number, key: string) {
     if (this.keys.has(key)) return;
     this.keys.add(key);
+    if (
+      this.state.jobs.every((job) => ["dead", "delivered"].includes(job.stage))
+    ) {
+      this.nextAdvance = this.now() + this.intervalMs;
+    }
     for (let i = 0; i < count; i++) {
       const id = `INV-${String(this.state.jobs.length + 1).padStart(4, "0")}`;
       this.state.jobs.push({
@@ -72,6 +85,7 @@ export class Simulation implements Adapter {
   async replay(id: string) {
     const j = this.state.jobs.find((x) => x.id === id);
     if (j?.stage === "dead") {
+      this.nextAdvance = this.now() + this.intervalMs;
       j.stage = "validated";
       j.attempts = 0;
       j.fault = "none";
@@ -82,6 +96,7 @@ export class Simulation implements Adapter {
     this.state = { jobs: [], events: [], fault: "none" };
     this.keys.clear();
     this.tick = 0;
+    this.nextAdvance = 0;
   }
   pdf() {
     return `${import.meta.env?.BASE_URL ?? "/failure-lab/"}sample.pdf`;
@@ -110,4 +125,4 @@ export const http: Adapter = {
   pdf: (id) => `/api/jobs/${id}/pdf`,
 };
 export const isLive = import.meta.env?.VITE_MODE === "live";
-export const adapter = isLive ? http : new Simulation();
+export const adapter = isLive ? http : new Simulation(1800);

@@ -22,6 +22,13 @@ test("real services support investigation, evidence export, replay, and PDF outp
   await expect(page.locator(".badge.delivered")).toHaveCount(3);
   const failedRow = page.getByRole("row").filter({ hasText: "Needs replay" });
   await failedRow.getByRole("button").press("Enter");
+  const graph = page.getByRole("region", { name: "Execution pipeline" });
+  await expect(
+    graph.getByRole("button", { name: /Generate PDF: Failed/ }),
+  ).toHaveCount(1);
+  await expect(
+    graph.getByRole("button", { name: /Record delivery: Blocked/ }),
+  ).toHaveCount(1);
   const inspector = page.locator(".inspector");
   const invoiceId = await inspector
     .getByRole("heading", { level: 2 })
@@ -48,6 +55,10 @@ test("real services support investigation, evidence export, replay, and PDF outp
     { timeout: 30000 },
   );
   await expect(page.locator(".badge.delivered")).toHaveCount(4);
+  await expect(
+    graph.getByRole("button", { name: /Record delivery: Passed/ }),
+  ).toHaveCount(4);
+  await expect(graph.locator(".thinking-dots")).toHaveCount(0);
   await expect(inspector.getByRole("list")).toContainText("Manual replay");
   const pdfUrl = await inspector
     .getByRole("link", { name: /Open generated PDF/ })

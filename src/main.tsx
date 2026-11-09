@@ -8,6 +8,7 @@ import {
   invoiceEvents,
   stageLabels,
 } from "./evidence";
+import { PipelineGraph } from "./PipelineGraph";
 import "./style.css";
 
 const faults: { id: Fault; title: string; description: string }[] = [
@@ -54,6 +55,13 @@ function App() {
   const lock = useRef(false);
   const pendingPoll = useRef<Promise<void> | null>(null);
   const inspectorHeading = useRef<HTMLHeadingElement>(null);
+  const pipelineHeading = useRef<HTMLHeadingElement>(null);
+  function revealPipeline() {
+    requestAnimationFrame(() => {
+      pipelineHeading.current?.focus();
+      pipelineHeading.current?.scrollIntoView({ block: "start" });
+    });
+  }
   const challengeJobs = s.jobs.filter((job) => challengeIds.includes(job.id));
   const challengeDead = challengeJobs.find((job) => job.stage === "dead");
   const challengeDelivered = challengeJobs.filter(
@@ -138,6 +146,7 @@ function App() {
       setJobFilter("all");
       setCustom(false);
       setS(snapshot);
+      revealPipeline();
     });
   }
   function inspect(id: string) {
@@ -512,6 +521,7 @@ function App() {
                           ?.id ?? selectedId,
                       );
                       setJobFilter("all");
+                      revealPipeline();
                     });
                   }}
                 >
@@ -533,6 +543,15 @@ function App() {
                 </form>
               </section>
             )}
+            <PipelineGraph
+              headingRef={pipelineHeading}
+              snapshot={s}
+              selected={selected}
+              onSelect={setSelectedId}
+              onInspect={inspect}
+              live={isLive}
+              stale={connection === "error"}
+            />
             <section className="metrics" aria-label="Pipeline totals">
               {[
                 ["Accepted", s.jobs.length, "Total invoices"],

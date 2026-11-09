@@ -8,7 +8,10 @@ test("inspect, compare, and export invoice evidence with keyboard access", async
   await page.goto("./");
   await page.getByRole("button", { name: "Run recovery challenge" }).click();
   await expect(page.locator(".badge.dead")).toHaveCount(1, { timeout: 20000 });
-  await page.getByRole("button", { name: "INV-0001" }).press("Enter");
+  await page
+    .getByRole("region", { name: "Invoices", exact: true })
+    .getByRole("button", { name: "INV-0001" })
+    .press("Enter");
   const inspector = page.getByRole("region", { name: "INV-0001" });
   await expect(
     inspector.getByRole("heading", { name: "INV-0001" }),
@@ -36,7 +39,10 @@ test("inspect, compare, and export invoice evidence with keyboard access", async
       event.message.includes("Retries exhausted"),
     ),
   ).toBe(true);
-  await page.getByRole("button", { name: "INV-0002" }).press("Enter");
+  await page
+    .getByRole("region", { name: "Invoices", exact: true })
+    .getByRole("button", { name: "INV-0002" })
+    .press("Enter");
   const healthy = page.getByRole("region", { name: "INV-0002" });
   await expect(
     healthy.getByRole("heading", { name: "INV-0002" }),

@@ -37,7 +37,7 @@ npm test
 npm run build
 ```
 
-Vite defaults to `/failure-lab/` for GitHub Pages. Compose builds with `VITE_BASE=/` and `VITE_MODE=live`. Both modes implement the same typed `Adapter` interface; live mode polls HTTP, simulation advances discrete checkpoints on each poll. Fault selection affects the first invoice of subsequent batches.
+Vite defaults to `/failure-lab/` for GitHub Pages. Compose builds with `VITE_BASE=/` and `VITE_MODE=live`. Both modes implement the same typed `Adapter` interface; live mode polls HTTP, the public simulation advances discrete checkpoints no more often than every 1.8 seconds, observed on the 1.2-second polling interval. Extra snapshot reads do not accelerate its progress. Fast backend stages may complete between polls. Fault selection affects the first invoice of subsequent batches.
 
 ## Architecture and correctness
 
@@ -82,3 +82,9 @@ Run the guided recovery challenge from the landing screen. It adds four invoices
 The workbench pairs a filterable invoice table with an inspector. Selecting an ID moves keyboard focus to the inspector heading, where the current state, next action, PDF, and chronological checkpoint timeline are available. Evidence exports include a schema version, execution mode, invoice state, and only that invoice’s available events. The Compose snapshot retains at most the latest 200 events across all invoices; exports disclose this bound and do not claim to be complete audit logs. Browser exports explicitly label simulated processing and timestamps.
 
 The interface uses system fonts without third-party font requests, visible keyboard focus, responsive layouts, a skip link, and connection/loading feedback. Browser tests cover the guided challenge, custom replay, keyboard inspection, JSON downloads, contrast, and automated WCAG checks on desktop and mobile. With a disposable Compose stack running, `npm run test:browser:live` runs both viewports against real services, validates a generated PDF and live evidence export, and tests recovery from interrupted polling. This command resets the lab. CI runs both browser modes before deployment. Automated checks do not establish complete accessibility conformance.
+
+## Interactive execution pipeline
+
+Each invoice has a connected validation → PDF → delivery lane. Animated dots indicate the current pending stage (queued or processing), not CPU telemetry. Checkpoints turn green when passed; renderer exhaustion marks PDF as failed and delivery as blocked while healthy lanes finish. Replay resumes the same lane. Select any stage to open its available checkpoint log, then **Inspect invoice** for the full timeline and replay/PDF controls. The log groups existing event messages by stage; unrecognized messages remain available in the full invoice inspector.
+
+**Pause animation** stops motion without pausing jobs. Reduced-motion preferences disable dot animation automatically, and a lost connection stops animation while retaining the last known state. Browser pacing is educational, not a benchmark; the real Compose pipeline has no artificial delay. Desktop/mobile tests cover stage transitions, scoped logs, replay, motion controls, and live backend checkpoint mapping.
