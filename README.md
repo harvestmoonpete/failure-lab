@@ -71,3 +71,7 @@ Run `npx playwright install chromium` once, then `npm run test:browser`. CI chec
 ## Small improvement · November 7, 2026
 
 Filter the invoice table by in-flight, delivered, or needs-replay status. Counts update as jobs progress; the global metrics and event stream remain unfiltered.
+
+## Guided challenge · November 8, 2026
+
+Run the guided recovery challenge from the landing screen. It adds four invoices with a renderer outage and preserves existing batches. Replay becomes available after three invoices deliver and one reaches the dead-letter queue. Completion requires all four challenge IDs to be delivered after that observed partial failure. The PDF link is a sample on Pages and generated output in Compose. Reset lab also resets challenge progress.

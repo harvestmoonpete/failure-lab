@@ -41,6 +41,40 @@ function App() {
     [count, setCount] = useState(4),
     [tab, setTab] = useState("pipeline"),
     [jobFilter, setJobFilter] = useState("all");
+  const [challengeIds, setChallengeIds] = useState<string[]>([]);
+  const [isolated, setIsolated] = useState(false);
+  const challengeJobs = s.jobs.filter((job) => challengeIds.includes(job.id));
+  const challengeDead = challengeJobs.find((job) => job.stage === "dead");
+  const challengeDelivered = challengeJobs.filter(
+    (job) => job.stage === "delivered",
+  ).length;
+  const challengeComplete =
+    isolated && challengeIds.length === 4 && challengeDelivered === 4;
+  useEffect(() => {
+    if (challengeDead && challengeDelivered === 3) setIsolated(true);
+  }, [challengeDead, challengeDelivered]);
+  async function startChallenge() {
+    await action(async () => {
+      setTab("pipeline");
+      setJobFilter("all");
+      const previous = new Set(
+        (await adapter.snapshot()).jobs.map((job) => job.id),
+      );
+      await adapter.fault("outage");
+      await adapter.submit(4, crypto.randomUUID());
+      const snapshot = await adapter.snapshot();
+      const ids = snapshot.jobs
+        .filter((job) => !previous.has(job.id))
+        .map((job) => job.id);
+      if (ids.length !== 4)
+        throw new Error(
+          "Could not identify the four challenge invoices. Inspect the pipeline before retrying.",
+        );
+      setIsolated(false);
+      setChallengeIds(ids);
+      setS(snapshot);
+    });
+  }
   const refresh = async () => setS(await adapter.snapshot());
   useEffect(() => {
     refresh().catch((e) => setError(e.message));
@@ -119,7 +153,13 @@ function App() {
           <button
             className="secondary"
             disabled={busy}
-            onClick={() => action(() => adapter.reset())}
+            onClick={() =>
+              action(async () => {
+                await adapter.reset();
+                setChallengeIds([]);
+                setIsolated(false);
+              })
+            }
           >
             ↻ Reset lab
           </button>
@@ -134,6 +174,101 @@ function App() {
               : "Runs entirely in your browser. Timing and throughput are simulated; PDFs are samples."}
           </span>
         </div>
+        <section className="challenge" aria-labelledby="challenge-title">
+          <p className="eyebrow">GUIDED CHALLENGE · ABOUT 2 MINUTES</p>
+          <h2 id="challenge-title">
+            Recover an invoice without stopping the batch.
+          </h2>
+          <p>
+            A renderer outage targets one of four new invoices. Prove that the
+            other three finish, then replay the exhausted job and inspect its
+            PDF. Existing batches stay intact.
+          </p>
+          <p>
+            {isLive
+              ? "This challenge exercises the local queue, database, and PDF worker."
+              : "This browser simulation teaches the recovery sequence. Run Compose to exercise the real queue, database, and PDF worker; these timings are not a benchmark."}
+          </p>
+          {!challengeIds.length ? (
+            <button
+              className="primary"
+              disabled={busy}
+              onClick={startChallenge}
+            >
+              Run recovery challenge
+            </button>
+          ) : (
+            <>
+              <ol className="challenge-steps">
+                <li>✓ Submit four invoices with one renderer outage.</li>
+                <li>
+                  {isolated ? "✓" : "○"} Observe three delivered invoices while
+                  one exhausts its retries.
+                </li>
+                <li>
+                  {challengeComplete ? "✓" : "○"} Replay the failed invoice;
+                  verify all four are delivered.
+                </li>
+              </ol>
+              <p className="challenge-status" role="status">
+                {challengeComplete
+                  ? "Challenge complete: all four invoices delivered after isolated failure and replay."
+                  : isolated
+                    ? "Partial failure confirmed. Replay the exhausted invoice to finish the challenge."
+                    : `${challengeDelivered} of 4 challenge invoices delivered. Watch the remaining invoice reach the dead-letter queue.`}
+              </p>
+              <div className="challenge-actions">
+                {!challengeComplete && (
+                  <button
+                    className="primary"
+                    disabled={busy || !isolated || !challengeDead}
+                    onClick={() =>
+                      action(() => adapter.replay(challengeDead!.id))
+                    }
+                  >
+                    Replay challenge invoice
+                  </button>
+                )}
+                {challengeComplete && (
+                  <a
+                    href={adapter.pdf(challengeIds[0])}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {isLive
+                      ? "Download a generated PDF"
+                      : "Open the sample PDF"}{" "}
+                    ↗
+                  </a>
+                )}
+                <button
+                  className="secondary"
+                  disabled={busy}
+                  onClick={() => {
+                    setChallengeIds([]);
+                    setIsolated(false);
+                  }}
+                >
+                  Exit challenge
+                </button>
+              </div>
+              <details>
+                <summary>Evidence and takeaway</summary>
+                <p>
+                  Challenge invoice IDs: {challengeIds.join(", ")}. Stable IDs
+                  let the pipeline resume an existing job. Retries are bounded
+                  so a persistent renderer fault does not hold healthy invoices
+                  indefinitely.
+                </p>
+                <p>
+                  The table and event stream below contain the actual current
+                  adapter state for these IDs. The PDF is a bundled sample in
+                  browser mode.
+                </p>
+              </details>
+            </>
+          )}
+        </section>
         {error && (
           <div role="alert" className="error">
             {error} — Check your service connection and retry.
