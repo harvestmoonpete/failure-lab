@@ -9,7 +9,8 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "server": "node --import tsx server/index.ts",
     "format": "prettier --write src server tests/*.ts *.json *.ts *.yml .github/workflows/*.yml",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "test:browser:live": "playwright test --config=playwright.live.config.ts"
   },
   "dependencies": {
     "amqplib": "0.10.5",

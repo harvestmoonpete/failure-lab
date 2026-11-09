@@ -35,6 +35,13 @@ jobs:
       - run: python tests/pdf_test.py
       - run: docker compose up --build -d --wait --wait-timeout 180
       - run: python3 tests/integration.py
+      - run: npm run test:browser:live
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: compose-browser-failures
+          path: test-results/
+          retention-days: 7
       - run: python3 tests/broker_restart.py
       - run: python3 tests/broker_restart.py --recreate
       - if: always()

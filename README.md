@@ -1,15 +1,16 @@
 # Failure Lab
 
-**Resilience, made visible.** An interactive invoice pipeline that you can deliberately break, then recover without duplicate delivery.
+**One failed invoice. Not a failed batch.** A hands-on reliability workbench: break an invoice pipeline, inspect the evidence, and recover an exhausted job without replaying healthy invoices.
 
 [Browser demo](https://harvestmoonpete.github.io/failure-lab/) · TypeScript / Node.js · Python · PostgreSQL · RabbitMQ
 
 ## Try the story
 
-1. Select **Renderer outage**, then **Process batch**.
-2. Observe one invoice exhaust three attempts while the others finish.
-3. **Replay** the dead-lettered invoice. Its fault is cleared and it delivers once.
-4. Reset when idle and try **Worker crash**: the PDF is written before the worker exits; the restarted worker reuses it.
+1. Start **Run recovery challenge** from the landing screen. It submits four synthetic invoices with one renderer outage.
+2. Observe three delivered invoices and one that exhausts its three attempts. The failed invoice is selected in the inspector.
+3. Select a healthy invoice ID to compare its chronological timeline with the failed invoice. **Export evidence** downloads that invoice and its available events as JSON.
+4. **Replay challenge invoice**, then verify all four are delivered. Open the PDF and inspect the replay event under the same invoice ID.
+5. Expand **Custom experiment** to try duplicate events or a worker crash. **Under the hood** explains the backend guarantees and limitations.
 
 The public demo is a deterministic, in-memory browser simulation. It uses sample PDFs and simulated timing. Refreshing clears its state. It makes no backend calls and does not measure real throughput. Compose runs the actual queue, database and renderer. All invoices are synthetic; delivery is an internal record, never an email or financial transaction.
 
@@ -70,8 +71,14 @@ Run `npx playwright install chromium` once, then `npm run test:browser`. CI chec
 
 ## Small improvement · November 7, 2026
 
-Filter the invoice table by in-flight, delivered, or needs-replay status. Counts update as jobs progress; the global metrics and event stream remain unfiltered.
+Filter the invoice table by in-flight, delivered, or needs-replay status. Counts update as jobs progress; the pipeline totals remain unfiltered; the inspector follows the selected invoice.
 
 ## Guided challenge · November 8, 2026
 
 Run the guided recovery challenge from the landing screen. It adds four invoices with a renderer outage and preserves existing batches. Replay becomes available after three invoices deliver and one reaches the dead-letter queue. Completion requires all four challenge IDs to be delivered after that observed partial failure. The PDF link is a sample on Pages and generated output in Compose. Reset lab also resets challenge progress.
+
+## Invoice investigation workspace
+
+The workbench pairs a filterable invoice table with an inspector. Selecting an ID moves keyboard focus to the inspector heading, where the current state, next action, PDF, and chronological checkpoint timeline are available. Evidence exports include a schema version, execution mode, invoice state, and only that invoice’s available events. The Compose snapshot retains at most the latest 200 events across all invoices; exports disclose this bound and do not claim to be complete audit logs. Browser exports explicitly label simulated processing and timestamps.
+
+The interface uses system fonts without third-party font requests, visible keyboard focus, responsive layouts, a skip link, and connection/loading feedback. Browser tests cover the guided challenge, custom replay, keyboard inspection, JSON downloads, contrast, and automated WCAG checks on desktop and mobile. With a disposable Compose stack running, `npm run test:browser:live` runs both viewports against real services, validates a generated PDF and live evidence export, and tests recovery from interrupted polling. This command resets the lab. CI runs both browser modes before deployment. Automated checks do not establish complete accessibility conformance.
